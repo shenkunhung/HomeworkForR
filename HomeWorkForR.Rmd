@@ -1,0 +1,103 @@
+---
+title: "Homework for R"
+author: "Wilson"
+date: "2016年12月10日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+    - 前言
+    - 資料導入與初步檢視
+    - 資料處理
+      - 處理遺漏值
+      - 年齡分類
+    - 假設檢驗
+    - 結語
+
+### 前言
+1912年4月14日，Titanic發生船難，死亡人數高達1,512人。而此次船難在1997年被拍攝成電影，其中一幕讓人印象深刻的便是在危難中，多數人皆可以接受讓婦女及小孩先搭乘救生艇離開的道德情操，因此我們可以合理假設，如果電影內容屬實，那麼在實際搭乘人員名單中將可發現女性、小孩的存活率高於其他人。
+
+而本份報告將從分析Titanic人員名單進行分析，分析人員存活狀態是否與前述假設一致。
+
+### 資料導入與初步檢視
+初步檢視資料中有12個變數，891個觀察值，其中我們要分析的age變數中有177個遺漏值。Sex變數中，女生人數314人，男生人數577人。
+
+```{r warning=FALSE, message=FALSE}
+titanic <- read.csv("https://storage.googleapis.com/r_rookies/kaggle_titanic_train.csv")
+str(titanic)
+summary(titanic$Age)
+table(titanic$Sex)
+```
+
+### 資料處理
+
+- 處理遺漏值
+    - 將資料依照Pclass分類檢視各類的Age變數，可以發現Pclass越好的人，平均年齡越高，而這有可能是因為Pclass等級好的大都是要搭Titanic去旅遊的有一定社會地位的富人，而Pclass等級差的人則大都是要去追尋美國夢，因此年紀較輕。故在處理遺漏值上，此分析報告取各Pclass的平均年紀去填入各Pclass中年紀的遺漏值。
+```{r warning=FALSE, message=FALSE}
+titanic_split <- split(titanic,titanic$Pclass)
+summary(titanic_split[[1]]$Age)
+summary(titanic_split[[2]]$Age)
+summary(titanic_split[[3]]$Age)
+split_age_mean_01 <- mean(titanic_split[[1]]$Age, na.rm = TRUE)
+titanic_split[[1]]$Age[is.na(titanic_split[[1]]$Age)] <- split_age_mean_01
+split_age_mean_02 <- mean(titanic_split[[2]]$Age, na.rm = TRUE)
+titanic_split[[2]]$Age[is.na(titanic_split[[2]]$Age)] <- split_age_mean_02
+split_age_mean_03 <- mean(titanic_split[[3]]$Age, na.rm = TRUE)
+titanic_split[[3]]$Age[is.na(titanic_split[[3]]$Age)] <- split_age_mean_03
+titanic_rbind <- rbind(titanic_split[[1]],titanic_split[[2]],titanic_split[[3]])
+summary(titanic_rbind$Age)
+```
+
+- 依年齡分類
+    - 考量年齡為連續的變數，因此為了方便分析，我們將年紀分類為兩組：未滿20歲的歸類為Young；20以上的歸類為Elder。
+```{r warning=FALSE, message=FALSE}
+titanic_rbind$Agecat[titanic_rbind$Age < 20] <- "1.Young"
+titanic_rbind$Agecat[titanic_rbind$Age >= 20] <- "2.Elder"
+table(titanic_rbind$Agecat)
+```
+
+### 假設檢驗
+- 檢驗女性是否比男性更容易存活？
+    - 在直方圖中，我們可以看見女性存活人數確實遠比男性多。接著，算出女性存活233人，男性存活109人後，使用prop.test去檢驗男女性存活比例是否有顯著差異，可以發現女性和男性的存活比例有顯著差異。。因此我們可以說，女性確實可能比男性更容易存活。
+
+```{r warning=FALSE, message=FALSE}
+library(ggplot2)
+library(plotly)
+ggplot_bar_sex <- ggplot(titanic_rbind, aes(x = Sex, y = Survived, fill = Sex)) + geom_bar(stat = "identity")
+ggplot_bar_sex_plotly <- ggplotly(ggplot_bar_sex)
+ggplot_bar_sex_plotly
+```
+
+```{r warning=FALSE, message=FALSE}
+aggregate(titanic_rbind$Survived ~ titanic_rbind$Sex, data=titanic_rbind, FUN=sum)
+#檢驗女性和男性存活比例差異
+Sex_test <- c(314,577)
+Sex_Survived <- c(233,109)
+prop.test(Sex_Survived,Sex_test)
+```
+
+- 檢驗Young是否比Elder更容易存活？
+    - 在直方圖中，可以看見Elder存活人數遠比Young多。但在比例上呢？先算出Young存活79人、Elder存活263人後，使用prop.test去檢驗存活比例看是否有顯著差異後，可以發現Young和Elder的存活比例有顯著差異。因此我們可以說，Young確實可能比Elder更容易存活。
+
+ 
+```{r warning=FALSE, message=FALSE}
+library(ggplot2)
+library(plotly)
+ggplot_bar_agecat <- ggplot(titanic_rbind, aes(x = Agecat, y = Survived, fill = Agecat)) + geom_bar(stat = "identity")
+ggplot_bar_agecat_plotly <- ggplotly(ggplot_bar_agecat)
+ggplot_bar_agecat_plotly
+```  
+
+```{r warning=FALSE, message=FALSE}
+aggregate(titanic_rbind$Survived ~ titanic_rbind$Agecat, data=titanic_rbind, FUN=sum)
+#檢驗Young和Elder存活比例差異
+Agecat_test <- c(164,727)
+Agecat_Survived <- c(79,263)
+prop.test(Agecat_Survived,Agecat_test)
+```
+
+###結語 
+根據此次檢驗，我們可以說，從存活率來看，當初Titanic船難時，的確存在人們發揮出高尚的情操將活命的機會讓與年紀較輕者及女性的可能情況。
