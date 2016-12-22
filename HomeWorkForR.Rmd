@@ -1,6 +1,6 @@
 ---
 title: "Homework for R"
-author: "Wilson"
+author: "洪聖焜"
 date: "2016年12月10日"
 output: html_document
 ---
